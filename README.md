@@ -7,18 +7,40 @@ A data source for a `UITableView` or a `UICollectionView` can be constructed by 
 
 ## Requirements
 
-* iOS 8.0+
-* Xcode 10.2+
-* [ReactiveCocoa](https://github.com/ReactiveCocoa/ReactiveCocoa/releases/)
+* iOS 13.0+
+* Xcode 11.0+
+* [Combine](https://developer.apple.com/documentation/combine)
 
-## Installation
+### CocoaPods
 
-The recommended way to add DataSource to your project is with [Carthage](https://github.com/Carthage/Carthage/releases/).
-Add `github "Fueled/DataSource"` line to your Cartfile and proceed with your favorite way to update and integrate your Carthage dependencies.
+[CocoaPods](https://cocoapods.org) is a dependency manager for Cocoa projects. For usage and installation instructions, visit their website. To integrate Alamofire into your Xcode project using CocoaPods, specify it in your `Podfile`:
 
-## Example Project
+```ruby
+pod 'DataSource', :git => 'https://github.com/thib4ult/DataSource'
+```
 
-You will find examples of using DataSource framework in [DataSourceExample](https://github.com/Fueled/DataSourceExample) project.
+### Carthage
+
+[Carthage](https://github.com/Carthage/Carthage) is a decentralized dependency manager that builds your dependencies and provides you with binary frameworks. To integrate Alamofire into your Xcode project using Carthage, specify it in your `Cartfile`:
+
+```ogdl
+github "thib4ult/DataSource"
+```
+
+### Swift Package Manager
+
+[Swift Package Manager](https://swift.org/package-manager/)
+
+>Xcode 11 integrates with libSwiftPM to provide support for iOS, watchOS, and tvOS platforms.
+
+1. In Xcode, open your project and navigate to **File** → **Swift Packages** → **Add Package Dependency...**
+2. Paste the repository URL (`https://github.com/thib4ult/DataSource`) and click **Next**.
+3. For **Rules**, select **Branch** (with branch set to `master`).
+4. Click **Finish**.
+
+### Manually
+
+If you prefer not to use any of the aforementioned dependency managers, you can integrate Alamofire into your project manually.
 
 ## Rationale
 
@@ -57,14 +79,12 @@ You can subclass `TableViewDataSource` or any of its sublcasses to extend or ove
 
 Implementations for other collection-displaying views (e.g. map views with annotations) can be crafted in a similar fashion.
 
-## Using with CoreData, KVO and others
+## Using with KVO and others
 
 `DataSource` protocol can be used to wrap any API that provides a collection of items and notifies of any changes of that collection.
 
 DataSource framework provides implementations for two such collection-based APIs:
 
-1. `FetchedResultsDataSource` class implements `DataSource` protocol using `NSFetchedResultsController` for CoreData models.
-`FetchedResultsDataSource` can be used just as any other `DataSource` without the need to manually implement `NSFetchedResultsControllerDelegate` protocol.
-2. `KVODataSource` implements Key-Value Observing (KVO) for ordered to-many relationships.
+1. `KVODataSource` implements Key-Value Observing (KVO) for ordered to-many relationships.
 
 In case you need to handle data changes provided by other sources e.g. Photos framework or the new Contacts framework, similar `DataSource` implementations can be easily crafted.
