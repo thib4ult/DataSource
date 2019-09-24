@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ReactiveSwift
+import Combine
 
 /// `DataSource` implementation that has an arbitrary
 /// number of sections of items of type T.
@@ -30,15 +30,17 @@ import ReactiveSwift
 /// sections' `supplementaryItems` dictionary under some user-defined key.
 public final class AutoDiffSectionsDataSource<T>: DataSource {
 
-	public let changes: Signal<DataChange, Never>
-	private let observer: Signal<DataChange, Never>.Observer
-	private let disposable: Disposable
+	public var changes: AnyPublisher<DataChange, Never> {
+		changesSubject.eraseToAnyPublisher()
+	}
+	private let changesSubject = PassthroughSubject<DataChange, Never>()
+	private var cancellable: Cancellable?
 
 	/// Mutable array of dataSourceSections.
 	///
 	/// Every modification of the array causes calculation
 	/// and emission of appropriate dataChanges.
-	public let sections: MutableProperty<[DataSourceSection<T>]>
+	public let sections: CurrentValueSubject<[DataSourceSection<T>], Never>
 
 	/// Function that is used to compare a pair of sections for identity.
 	/// Returns `true` if the sections are identical, in which case the items
@@ -66,8 +68,7 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 		compareSections: @escaping (DataSourceSection<T>, DataSourceSection<T>) -> Bool,
 		compareItems: @escaping (T, T) -> Bool)
 	{
-		(self.changes, self.observer) = Signal<DataChange, Never>.pipe()
-		self.sections = MutableProperty(sections)
+		self.sections = CurrentValueSubject(sections)
 		self.compareSections = compareSections
 		self.compareItems = compareItems
 		func autoDiff(_ oldSections: [DataSourceSection<T>], newSections: [DataSourceSection<T>]) -> DataChange
@@ -90,16 +91,19 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 			}
 			return DataChangeBatch(changes)
 		}
-		self.disposable = self.sections.producer
-			.combinePrevious(sections)
-			.skip(first: 1)
+
+		let combinePrevious = self.sections
+			.scan((sections, sections)) { ($0.1, $1) }
+			.dropFirst(2)
+			.eraseToAnyPublisher()
+
+		cancellable = combinePrevious
 			.map(autoDiff)
-			.start(self.observer)
+			.sink { [weak self] in self?.changesSubject.send($0) }
 	}
 
 	deinit {
-		self.observer.sendCompleted()
-		self.disposable.dispose()
+		cancellable?.cancel()
 	}
 
 	public var numberOfSections: Int {

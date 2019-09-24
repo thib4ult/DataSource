@@ -6,9 +6,8 @@
 //  Copyright (c) 2015 Fueled. All rights reserved.
 //
 
-import Foundation
-import ReactiveSwift
 import UIKit
+import Combine
 
 /// An object that implements `UITableViewDataSource` protocol
 /// by returning the data from an associated dataSource.
@@ -30,6 +29,7 @@ open class TableViewDataSource: NSObject, UITableViewDataSource {
 	@IBOutlet public final var tableView: UITableView?
 
 	public final let dataSource = ProxyDataSource()
+	private var cancellables: [Cancellable] = []
 
 	public final var reuseIdentifierForItem: (IndexPath, Any) -> String = {
 		_, _ in "DefaultCell"
@@ -37,19 +37,17 @@ open class TableViewDataSource: NSObject, UITableViewDataSource {
 
 	public final var dataChangeTarget: DataChangeTarget?
 
-	private let disposable = CompositeDisposable()
-
 	override public init() {
 		super.init()
-		self.disposable += self.dataSource.changes.observeValues { [weak self] change in
+		cancellables.append(dataSource.changes.sink { [weak self] change in
 			if let self = self, let dataChangeTarget = self.dataChangeTarget ?? self.tableView {
 				change.apply(to: dataChangeTarget)
 			}
-		}
+		})
 	}
 
 	deinit {
-		self.disposable.dispose()
+		cancellables.forEach { $0.cancel() }
 	}
 
 	open func configureCell(_ cell: UITableViewCell, forRowAt indexPath: IndexPath) {

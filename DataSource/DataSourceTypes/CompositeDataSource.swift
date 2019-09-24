@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ReactiveSwift
+import Combine
 
 /// `DataSource` implementation that is composed of an array
 /// of other dataSources (called inner dataSources).
@@ -21,29 +21,29 @@ import ReactiveSwift
 /// to correspond to the structure of the compositeDataSource.
 public final class CompositeDataSource: DataSource {
 
-	public let changes: Signal<DataChange, Never>
-	private let observer: Signal<DataChange, Never>.Observer
-	private let disposable = CompositeDisposable()
+	public var changes: AnyPublisher<DataChange, Never> {
+		changesSubject.eraseToAnyPublisher()
+	}
+	private let changesSubject = PassthroughSubject<DataChange, Never>()
+	private var cancellables: [Cancellable] = []
 
 	public let innerDataSources: [DataSource]
 
 	public init(_ inner: [DataSource]) {
-		(self.changes, self.observer) = Signal<DataChange, Never>.pipe()
 		self.innerDataSources = inner
 		for (index, dataSource) in inner.enumerated() {
-			self.disposable += dataSource.changes.observeValues { [weak self] change in
+			cancellables.append(dataSource.changes.sink { [weak self] change in
 				if let self = self {
 					let map = mapOutside(self.innerDataSources, index)
 					let mapped = change.mapSections(map)
-					self.observer.send(value: mapped)
+					self.changesSubject.send(mapped)
 				}
-			}
+			})
 		}
 	}
 
 	deinit {
-		self.observer.sendCompleted()
-		self.disposable.dispose()
+		cancellables.forEach { $0.cancel() }
 	}
 
 	public var numberOfSections: Int {

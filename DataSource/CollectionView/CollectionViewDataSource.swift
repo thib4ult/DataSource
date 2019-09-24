@@ -6,10 +6,8 @@
 //  Copyright (c) 2015 Fueled. All rights reserved.
 //
 
-import Foundation
-import ReactiveSwift
 import UIKit
-
+import Combine
 /// An object that implements `UICollectionViewDataSource` protocol
 /// by returning the data from an associated dataSource.
 ///
@@ -33,6 +31,7 @@ open class CollectionViewDataSource: NSObject, UICollectionViewDataSource {
 	@IBOutlet public final var collectionView: UICollectionView?
 
 	public final let dataSource = ProxyDataSource()
+	private var cancellables: [Cancellable] = []
 
 	public final var reuseIdentifierForItem: (IndexPath, Any) -> String = {
 		_, _ in "DefaultCell"
@@ -44,19 +43,17 @@ open class CollectionViewDataSource: NSObject, UICollectionViewDataSource {
 
 	public final var dataChangeTarget: DataChangeTarget?
 
-	private let disposable = CompositeDisposable()
-
 	override public init() {
 		super.init()
-		self.disposable += self.dataSource.changes.observeValues { [weak self] change in
+		cancellables.append(dataSource.changes.sink { [weak self] change in
 			if let self = self, let dataChangeTarget = self.dataChangeTarget ?? self.collectionView {
 				change.apply(to: dataChangeTarget)
 			}
-		}
+		})
 	}
 
 	deinit {
-		self.disposable.dispose()
+		cancellables.forEach { $0.cancel() }
 	}
 
 	open func configureCell(_ cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
