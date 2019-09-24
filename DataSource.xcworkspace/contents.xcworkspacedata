@@ -4,13 +4,4 @@
    <FileRef
       location = "container:DataSource.xcodeproj">
    </FileRef>
-   <FileRef
-      location = "group:Carthage/Checkouts/Nimble/Nimble.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:Carthage/Checkouts/ReactiveSwift/ReactiveSwift.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:Carthage/Checkouts/Quick/Quick.xcodeproj">
-   </FileRef>
 </Workspace>

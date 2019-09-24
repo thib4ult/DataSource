@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ReactiveSwift
+import Combine
 
 /// `DataSource` implementation that has a single section and
 /// uses key-value coding (KVC) to returns objects from an ordered
@@ -17,15 +17,15 @@ import ReactiveSwift
 /// in the to-many relationship and emit them as its own dataChanges.
 public final class  KVODataSource: NSObject, DataSource {
 
-	public let changes: Signal<DataChange, Never>
-	private let observer: Signal<DataChange, Never>.Observer
+	public let changes: AnyPublisher<DataChange, Never>
+	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
 	public let target: NSObject
 	public let keyPath: String
 	public let supplementaryItems: [String: Any]
 
 	public init(target: NSObject, keyPath: String, supplementaryItems: [String: Any] = [:]) {
-		(self.changes, self.observer) = Signal<DataChange, Never>.pipe()
+		self.changes = changesSubject.eraseToAnyPublisher()
 		self.target = target
 		self.keyPath = keyPath
 		self.supplementaryItems = supplementaryItems
@@ -35,7 +35,6 @@ public final class  KVODataSource: NSObject, DataSource {
 
 	deinit {
 		self.target.removeObserver(self, forKeyPath: self.keyPath, context: nil)
-		self.observer.sendCompleted()
 	}
 
 	public let numberOfSections = 1
@@ -79,13 +78,13 @@ public final class  KVODataSource: NSObject, DataSource {
 		}
 		switch type {
 		case .insertion:
-			self.observer.send(value: DataChangeInsertItems(indexPaths))
+			self.changesSubject.send(DataChangeInsertItems(indexPaths))
 		case .removal:
-			self.observer.send(value: DataChangeDeleteItems(indexPaths))
+			self.changesSubject.send(DataChangeDeleteItems(indexPaths))
 		case .replacement:
-			self.observer.send(value: DataChangeReloadItems(indexPaths))
+			self.changesSubject.send(DataChangeReloadItems(indexPaths))
 		case .setting:
-			self.observer.send(value: DataChangeReloadSections([0]))
+			self.changesSubject.send(DataChangeReloadSections([0]))
 		@unknown default:
 			NSLog("Unhandled case for NSKeyValueChange: \(type). DataSource should be updated to account for it or it could lead to unexpected results.")
 			assertionFailure()

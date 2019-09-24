@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ReactiveSwift
+import Combine
 
 /// `DataSource` implementation that has one section of items of type T.
 ///
@@ -17,15 +17,14 @@ import ReactiveSwift
 /// insert and move individual items.
 public final class AutoDiffDataSource<T>: DataSource {
 
-	public let changes: Signal<DataChange, Never>
-	private let observer: Signal<DataChange, Never>.Observer
-	private let disposable: Disposable
+	public let changes: AnyPublisher<DataChange, Never>
+	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
 	/// Mutable array of items in the only section of the autoDiffDataSource.
 	///
 	/// Every modification of the array causes calculation
 	/// and emission of appropriate dataChanges.
-	public let items: MutableProperty<[T]>
+	public let items: CurrentValueSubject<[T], Never>
 
 	public let supplementaryItems: [String: Any]
 
@@ -47,24 +46,22 @@ public final class AutoDiffDataSource<T>: DataSource {
 		findMoves: Bool = true,
 		compare: @escaping (T, T) -> Bool)
 	{
-		(self.changes, self.observer) = Signal<DataChange, Never>.pipe()
-		self.items = MutableProperty(items)
+		changes = changesSubject.eraseToAnyPublisher()
+		self.items = CurrentValueSubject(items)
 		self.supplementaryItems = supplementaryItems
 		self.compare = compare
 		func autoDiff(_ old: [T], new: [T]) -> DataChange {
 			let result = AutoDiff.compare(old: old, new: new, findMoves: findMoves, compare: compare)
 			return DataChangeBatch(result.toItemChanges())
 		}
-		self.disposable = self.items.producer
-			.combinePrevious(items)
-			.skip(first: 1)
-			.map(autoDiff)
-			.start(self.observer)
-	}
+		let combinePrevious = self.items
+			.scan((items, items)) { ($0.1, $1) }
+			.dropFirst(2)
+			.eraseToAnyPublisher()
 
-	deinit {
-		self.observer.sendCompleted()
-		self.disposable.dispose()
+		_ = combinePrevious
+			.map(autoDiff)
+			.sink { [weak self] in self?.changesSubject.send($0) }
 	}
 
 	public let numberOfSections = 1

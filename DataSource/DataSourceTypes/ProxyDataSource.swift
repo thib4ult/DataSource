@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import ReactiveSwift
+import Combine
 
 /// `DataSource` implementation that returns data from
 /// another dataSource (called inner dataSource).
@@ -20,12 +20,12 @@ import ReactiveSwift
 /// and emits them as its own changes.
 public final class ProxyDataSource: DataSource {
 
-	public let changes: Signal<DataChange, Never>
-	private let observer: Signal<DataChange, Never>.Observer
-	private let disposable = CompositeDisposable()
-	private var lastDisposable: Disposable?
+	public let changes: AnyPublisher<DataChange, Never>
+	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
-	public let innerDataSource: MutableProperty<DataSource>
+	public var innerDataSource: CurrentValueSubject<DataSource, Never>
+
+	private var lastCancellable: Cancellable?
 
 	/// When `true`, switching innerDataSource produces
 	/// a dataChange consisting of deletions of all the
@@ -33,29 +33,30 @@ public final class ProxyDataSource: DataSource {
 	/// the sections of the new innerDataSource.
 	///
 	/// when `false`, switching innerDataSource produces `DataChangeReloadData`.
-	public let animatesChanges: MutableProperty<Bool>
+	public let animatesChanges: CurrentValueSubject<Bool, Never>
 
 	public init(_ inner: DataSource = EmptyDataSource(), animateChanges: Bool = true) {
-		(self.changes, self.observer) = Signal<DataChange, Never>.pipe()
-		self.innerDataSource = MutableProperty(inner)
-		self.animatesChanges = MutableProperty(animateChanges)
-		self.lastDisposable = inner.changes.observe(self.observer)
-		self.disposable += self.innerDataSource.producer
-			.combinePrevious(inner)
-			.skip(first: 1)
-			.startWithValues { [weak self] old, new in
+		changes = changesSubject.eraseToAnyPublisher()
+		self.innerDataSource = CurrentValueSubject(inner)
+		self.animatesChanges = CurrentValueSubject(animateChanges)
+		lastCancellable = inner.changes.sink { [weak self] in self?.changesSubject.send($0) }
+
+		let combinePrevious = self.innerDataSource
+			.scan((inner, inner)) { ($0.1, $1) }
+			.dropFirst(2)
+			.eraseToAnyPublisher()
+
+		_ = combinePrevious.sink { [weak self] old, new in
 				if let self = self {
-					self.lastDisposable?.dispose()
-					self.observer.send(value: changeDataSources(old, new, self.animatesChanges.value))
-					self.lastDisposable = new.changes.observe(self.observer)
+					self.lastCancellable?.cancel()
+					self.changesSubject.send(changeDataSources(old, new, self.animatesChanges.value))
+					self.lastCancellable = new.changes.sink { [weak self] in self?.changesSubject.send($0) }
 				}
 			}
 	}
 
 	deinit {
-		self.observer.sendCompleted()
-		self.disposable.dispose()
-		self.lastDisposable?.dispose()
+		self.lastCancellable?.cancel()
 	}
 
 	public var numberOfSections: Int {
