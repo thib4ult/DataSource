@@ -29,7 +29,7 @@ open class TableViewDataSource: NSObject, UITableViewDataSource {
 	@IBOutlet public final var tableView: UITableView?
 
 	public final let dataSource = ProxyDataSource()
-	private var cancellables: [Cancellable] = []
+	private var cancellable: Cancellable?
 
 	public final var reuseIdentifierForItem: (IndexPath, Any) -> String = {
 		_, _ in "DefaultCell"
@@ -39,15 +39,15 @@ open class TableViewDataSource: NSObject, UITableViewDataSource {
 
 	override public init() {
 		super.init()
-		cancellables.append(dataSource.changes.sink { [weak self] change in
+		cancellable = dataSource.changes.sink { [weak self] change in
 			if let self = self, let dataChangeTarget = self.dataChangeTarget ?? self.tableView {
 				change.apply(to: dataChangeTarget)
 			}
-		})
+		}
 	}
 
 	deinit {
-		cancellables.forEach { $0.cancel() }
+		cancellable?.cancel()
 	}
 
 	open func configureCell(_ cell: UITableViewCell, forRowAt indexPath: IndexPath) {

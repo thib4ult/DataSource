@@ -58,7 +58,7 @@ public final class AutoDiffDataSource<T>: DataSource {
 		}
 		let combinePrevious = self.items
 			.scan((items, items)) { ($0.1, $1) }
-			.dropFirst(2)
+			.dropFirst()
 			.eraseToAnyPublisher()
 
 		cancellable = combinePrevious

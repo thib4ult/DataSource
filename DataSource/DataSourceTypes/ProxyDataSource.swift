@@ -58,8 +58,8 @@ public final class ProxyDataSource: DataSource {
 	}
 
 	deinit {
-		lastCancellable?.cancel()
 		cancellable?.cancel()
+		lastCancellable?.cancel()
 	}
 
 	public var numberOfSections: Int {
