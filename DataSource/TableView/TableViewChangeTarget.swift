@@ -18,19 +18,19 @@ extension UITableView: DataChangeTarget {
 	}
 
 	public func ds_deleteItems(at indexPaths: [IndexPath]) {
-		self.deleteRows(at: indexPaths, with: .fade)
+		self.deleteRows(at: indexPaths, with: .none)
 	}
 
 	public func ds_deleteSections(_ sections: [Int]) {
-		self.deleteSections(IndexSet(dsIntegers: sections), with: .fade)
+		self.deleteSections(IndexSet(dsIntegers: sections), with: .none)
 	}
 
 	public func ds_insertItems(at indexPaths: [IndexPath]) {
-		self.insertRows(at: indexPaths, with: .fade)
+		self.insertRows(at: indexPaths, with: .none)
 	}
 
 	public func ds_insertSections(_ sections: [Int]) {
-		self.insertSections(IndexSet(dsIntegers: sections), with: .fade)
+		self.insertSections(IndexSet(dsIntegers: sections), with: .none)
 	}
 
 	public func ds_moveItem(at oldIndexPath: IndexPath, to newIndexPath: IndexPath) {
@@ -46,11 +46,11 @@ extension UITableView: DataChangeTarget {
 	}
 
 	public func ds_reloadItems(at indexPaths: [IndexPath]) {
-		self.reloadRows(at: indexPaths, with: .fade)
+		self.reloadRows(at: indexPaths, with: .none)
 	}
 
 	public func ds_reloadSections(_ sections: [Int]) {
-		self.reloadSections(IndexSet(dsIntegers: sections), with: .fade)
+		self.reloadSections(IndexSet(dsIntegers: sections), with: .none)
 	}
 
 }

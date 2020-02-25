@@ -94,7 +94,7 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 
 		let combinePrevious = self.sections
 			.scan((sections, sections)) { ($0.1, $1) }
-			.dropFirst(2)
+			.dropFirst()
 			.eraseToAnyPublisher()
 
 		cancellable = combinePrevious
