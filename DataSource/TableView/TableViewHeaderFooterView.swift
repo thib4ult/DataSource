@@ -18,10 +18,10 @@ import Combine
 ///   protocol directly in any `UITableViewHeaderFooterView` subclass.
 open class TableViewHeaderFooterView: UITableViewHeaderFooterView, DataSourceItemReceiver {
 
-	public final let viewModel = CurrentValueSubject<Any?, Never>(nil)
+	@Published public final var viewModel: Any? = nil
 
 	open func ds_setItem(_ item: Any) {
-		self.viewModel.value = item
+		self.viewModel = item
 	}
 
 }

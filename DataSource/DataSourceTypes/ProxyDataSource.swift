@@ -25,7 +25,7 @@ public final class ProxyDataSource: DataSource {
 	}
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
-	public var innerDataSource: CurrentValueSubject<DataSource, Never>
+	@Published public var innerDataSource: DataSource
 
 	private var lastCancellable: Cancellable?
 	private var cancellable: Cancellable?
@@ -36,14 +36,14 @@ public final class ProxyDataSource: DataSource {
 	/// the sections of the new innerDataSource.
 	///
 	/// when `false`, switching innerDataSource produces `DataChangeReloadData`.
-	public let animatesChanges: CurrentValueSubject<Bool, Never>
+	@Published public var animatesChanges: Bool
 
 	public init(_ inner: DataSource = EmptyDataSource(), animateChanges: Bool = true) {
-		self.innerDataSource = CurrentValueSubject(inner)
-		self.animatesChanges = CurrentValueSubject(animateChanges)
+		self.innerDataSource = inner
+		self.animatesChanges = animateChanges
 		lastCancellable = inner.changes.sink { [weak self] in self?.changesSubject.send($0) }
 
-		let combinePrevious = self.innerDataSource
+		let combinePrevious = self.$innerDataSource
 			.scan((inner, inner)) { ($0.1, $1) }
 			.dropFirst()
 			.eraseToAnyPublisher()
@@ -51,7 +51,7 @@ public final class ProxyDataSource: DataSource {
 		cancellable = combinePrevious.sink { [weak self] old, new in
 				if let self = self {
 					self.lastCancellable?.cancel()
-					self.changesSubject.send(changeDataSources(old, new, self.animatesChanges.value))
+					self.changesSubject.send(changeDataSources(old, new, self.animatesChanges))
 					self.lastCancellable = new.changes.sink { [weak self] in self?.changesSubject.send($0) }
 				}
 			}
@@ -63,27 +63,27 @@ public final class ProxyDataSource: DataSource {
 	}
 
 	public var numberOfSections: Int {
-		let inner = self.innerDataSource.value
+		let inner = self.innerDataSource
 		return inner.numberOfSections
 	}
 
 	public func numberOfItemsInSection(_ section: Int) -> Int {
-		let inner = self.innerDataSource.value
+		let inner = self.innerDataSource
 		return inner.numberOfItemsInSection(section)
 	}
 
 	public func supplementaryItemOfKind(_ kind: String, inSection section: Int) -> Any? {
-		let inner = self.innerDataSource.value
+		let inner = self.innerDataSource
 		return inner.supplementaryItemOfKind(kind, inSection: section)
 	}
 
 	public func item(at indexPath: IndexPath) -> Any {
-		let inner = self.innerDataSource.value
+		let inner = self.innerDataSource
 		return inner.item(at: indexPath)
 	}
 
 	public func leafDataSource(at indexPath: IndexPath) -> (DataSource, IndexPath) {
-		let inner = self.innerDataSource.value
+		let inner = self.innerDataSource
 		return inner.leafDataSource(at: indexPath)
 	}
 

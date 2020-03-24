@@ -27,7 +27,7 @@ public final class AutoDiffDataSource<T>: DataSource {
 	///
 	/// Every modification of the array causes calculation
 	/// and emission of appropriate dataChanges.
-	public let items: CurrentValueSubject<[T], Never>
+	@Published public var items: [T]
 
 	public let supplementaryItems: [String: Any]
 
@@ -49,14 +49,14 @@ public final class AutoDiffDataSource<T>: DataSource {
 		findMoves: Bool = true,
 		compare: @escaping (T, T) -> Bool)
 	{
-		self.items = CurrentValueSubject(items)
+		self.items = items
 		self.supplementaryItems = supplementaryItems
 		self.compare = compare
 		func autoDiff(_ old: [T], new: [T]) -> DataChange {
 			let result = AutoDiff.compare(old: old, new: new, findMoves: findMoves, compare: compare)
 			return DataChangeBatch(result.toItemChanges())
 		}
-		let combinePrevious = self.items
+		let combinePrevious = self.$items
 			.scan((items, items)) { ($0.1, $1) }
 			.dropFirst()
 			.eraseToAnyPublisher()
@@ -73,7 +73,7 @@ public final class AutoDiffDataSource<T>: DataSource {
 	public let numberOfSections = 1
 
 	public func numberOfItemsInSection(_ section: Int) -> Int {
-		return self.items.value.count
+		return self.items.count
 	}
 
 	public func supplementaryItemOfKind(_ kind: String, inSection section: Int) -> Any? {
@@ -81,7 +81,7 @@ public final class AutoDiffDataSource<T>: DataSource {
 	}
 
 	public func item(at indexPath: IndexPath) -> Any {
-		return self.items.value[indexPath.item]
+		return self.items[indexPath.item]
 	}
 
 	public func leafDataSource(at indexPath: IndexPath) -> (DataSource, IndexPath) {

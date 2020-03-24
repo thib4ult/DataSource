@@ -18,10 +18,10 @@ import Combine
 ///   protocol directly in any `UICollectionViewCell` subclass.
 open class CollectionViewCell: UICollectionViewCell, DataSourceItemReceiver {
 
-	public final let cellModel = CurrentValueSubject<Any?, Never>(nil)
+	@Published public final var cellModel: Any? = nil
 
 	open func ds_setItem(_ item: Any) {
-		self.cellModel.send(item)
+		self.cellModel = item
 	}
 
 }

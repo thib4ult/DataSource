@@ -40,7 +40,7 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 	///
 	/// Every modification of the array causes calculation
 	/// and emission of appropriate dataChanges.
-	public let sections: CurrentValueSubject<[DataSourceSection<T>], Never>
+	@Published public var sections: [DataSourceSection<T>]
 
 	/// Function that is used to compare a pair of sections for identity.
 	/// Returns `true` if the sections are identical, in which case the items
@@ -68,7 +68,7 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 		compareSections: @escaping (DataSourceSection<T>, DataSourceSection<T>) -> Bool,
 		compareItems: @escaping (T, T) -> Bool)
 	{
-		self.sections = CurrentValueSubject(sections)
+		self.sections = sections
 		self.compareSections = compareSections
 		self.compareItems = compareItems
 		func autoDiff(_ oldSections: [DataSourceSection<T>], newSections: [DataSourceSection<T>]) -> DataChange
@@ -92,7 +92,7 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 			return DataChangeBatch(changes)
 		}
 
-		let combinePrevious = self.sections
+		let combinePrevious = self.$sections
 			.scan((sections, sections)) { ($0.1, $1) }
 			.dropFirst()
 			.eraseToAnyPublisher()
@@ -107,19 +107,19 @@ public final class AutoDiffSectionsDataSource<T>: DataSource {
 	}
 
 	public var numberOfSections: Int {
-		return self.sections.value.count
+		return self.sections.count
 	}
 
 	public func numberOfItemsInSection(_ section: Int) -> Int {
-		return self.sections.value[section].items.count
+		return self.sections[section].items.count
 	}
 
 	public func supplementaryItemOfKind(_ kind: String, inSection section: Int) -> Any? {
-		return self.sections.value[section].supplementaryItems[kind]
+		return self.sections[section].supplementaryItems[kind]
 	}
 
 	public func item(at indexPath: IndexPath) -> Any {
-		return self.sections.value[indexPath.section].items[indexPath.item]
+		return self.sections[indexPath.section].items[indexPath.item]
 	}
 
 	public func leafDataSource(at indexPath: IndexPath) -> (DataSource, IndexPath) {
