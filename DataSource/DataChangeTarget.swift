@@ -16,24 +16,21 @@ import Foundation
 /// `UITableView` and `UICollectionView` are implementing this protocol.
 public protocol DataChangeTarget {
 
-	func ds_performBatchChanges(_ batchChanges: @escaping () -> Void)
+	func ds_apply(_ sections: [DataSourceSection])
 
-	func ds_deleteItems(at indexPaths: [IndexPath])
+	func ds_deleteItems(_ items: [AnyHashable])
 
-	func ds_deleteSections(_ sections: [Int])
+	func ds_deleteSections(_ sections: [DataSourceSection])
 
-	func ds_insertItems(at indexPaths: [IndexPath])
+	func ds_insertItems(_ items: [AnyHashable], at beforeItem: AnyHashable)
 
-	func ds_insertSections(_ sections: [Int])
+	func ds_insertSections(_ sections: [DataSourceSection], at beforeSection: DataSourceSection)
 
-	func ds_moveItem(at oldIndexPath: IndexPath, to newIndexPath: IndexPath)
+	func ds_moveItem(_ item: AnyHashable, at beforeItem: AnyHashable)
 
-	func ds_moveSection(_ oldSection: Int, toSection newSection: Int)
+	func ds_moveSection(_ section: DataSourceSection, at index: Int)
 
-	func ds_reloadData()
+	func ds_reloadItems(_ items: [AnyHashable])
 
-	func ds_reloadItems(at indexPaths: [IndexPath])
-
-	func ds_reloadSections(_ sections: [Int])
-
+	func ds_reloadSections(_ sections: [DataSourceSection])
 }

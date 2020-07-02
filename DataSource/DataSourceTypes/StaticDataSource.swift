@@ -15,16 +15,15 @@ import Combine
 /// (optionally) a dictionary of supplementary items.
 ///
 /// Never emits any dataChanges.
-public final class StaticDataSource<T>: DataSource {
+public final class StaticDataSource: DataSource {
 
-	public var changes: AnyPublisher<DataChange, Never> {
-		changesSubject.eraseToAnyPublisher()
-	}
+	public let changes: AnyPublisher<DataChange, Never>
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
-	public let sections: [DataSourceSection<T>]
+	public var sections: [DataSourceSection]
 
-	public init(sections: [DataSourceSection<T>]) {
+	public init(sections: [DataSourceSection]) {
+		self.changes = changesSubject.eraseToAnyPublisher()
 		self.sections = sections
 	}
 
@@ -33,7 +32,7 @@ public final class StaticDataSource<T>: DataSource {
 	///
 	/// Initialize with sections if you need multiple sections
 	/// or any supplementary items.
-	public convenience init(items: [T]) {
+	public convenience init(items: [AnyHashable]) {
 		self.init(sections: [DataSourceSection(items: items)])
 	}
 

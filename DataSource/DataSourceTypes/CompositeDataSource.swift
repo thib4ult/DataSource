@@ -21,29 +21,26 @@ import Combine
 /// to correspond to the structure of the compositeDataSource.
 public final class CompositeDataSource: DataSource {
 
-	public var changes: AnyPublisher<DataChange, Never> {
-		changesSubject.eraseToAnyPublisher()
-	}
+	public let changes: AnyPublisher<DataChange, Never>
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
-	private var cancellables: [Cancellable] = []
+	private var cancellables = Set<AnyCancellable>()
 
 	public let innerDataSources: [DataSource]
 
-	public init(_ inner: [DataSource]) {
-		self.innerDataSources = inner
-		for (index, dataSource) in inner.enumerated() {
-			cancellables.append(dataSource.changes.sink { [weak self] change in
-				if let self = self {
-					let map = mapOutside(self.innerDataSources, index)
-					let mapped = change.mapSections(map)
-					self.changesSubject.send(mapped)
-				}
-			})
-		}
+	public var sections: [DataSourceSection] {
+		innerDataSources.flatMap { $0.sections }
 	}
 
-	deinit {
-		cancellables.forEach { $0.cancel() }
+	public init(_ inner: [DataSource]) {
+		changes = changesSubject.eraseToAnyPublisher()
+		self.innerDataSources = inner
+		inner.forEach { datasource in
+			datasource.changes.sink { [weak self] _ in
+				if let self = self {
+					self.changesSubject.send(DataChangeApply(sections: self.sections))
+				}
+			}.store(in: &cancellables)
+		}
 	}
 
 	public var numberOfSections: Int {

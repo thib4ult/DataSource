@@ -10,20 +10,16 @@ import Foundation
 
 public struct DataChangeMoveSection: DataChange {
 
-	public let fromSection: Int
+	public let section: DataSourceSection
 	public let toSection: Int
 
-	public init(from fromSection: Int, to toSection: Int) {
-		self.fromSection = fromSection
+	public init(from fromSection: DataSourceSection, to toSection: Int) {
+		self.section = fromSection
 		self.toSection = toSection
 	}
 
 	public func apply(to target: DataChangeTarget) {
-		target.ds_moveSection(fromSection, toSection: toSection)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeMoveSection {
-		return DataChangeMoveSection(from: transform(fromSection), to: transform(toSection))
+		target.ds_moveSection(section, at: toSection)
 	}
 
 }

@@ -8,24 +8,22 @@
 
 import Foundation
 
-public struct DataChangeReloadItems: DataChange {
+public struct DataChangeReloadItems<T: Hashable>: DataChange {
 
-	public let indexPaths: [IndexPath]
+	public let items: [T]
 
-	public init(_ indexPaths: [IndexPath]) {
-		self.indexPaths = indexPaths
+	public init(_ items: [T]) {
+		self.items = items
 	}
 
-	public init (_ indexPath: IndexPath) {
-		self.init([indexPath])
+	public init (_ item: T) {
+		self.init([item])
 	}
 
 	public func apply(to target: DataChangeTarget) {
-		target.ds_reloadItems(at: indexPaths)
+		target.ds_apply([DataSourceSection(items: items)])
 	}
 
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeReloadItems {
-		return DataChangeReloadItems(indexPaths.map { $0.ds_mapSection(transform) })
-	}
+	
 
 }

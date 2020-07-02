@@ -22,6 +22,8 @@ public protocol DataSource {
 	/// of the dataSource contents immediately after they happen.
 	var changes: AnyPublisher<DataChange, Never> { get }
 
+	var sections: [DataSourceSection] { get }
+
 	var numberOfSections: Int { get }
 
 	func numberOfItemsInSection(_ section: Int) -> Int

@@ -8,26 +8,26 @@
 
 import Foundation
 
-extension IndexPath {
+public extension IndexPath {
 
-	func ds_setSection(_ section: Int) -> IndexPath {
+    func ds_setSection(_ section: Int) -> IndexPath {
 		return IndexPath(item: self.item, section: section)
 	}
 
-	func ds_mapSection(_ transform: (Int) -> Int) -> IndexPath {
+    func ds_mapSection(_ transform: (Int) -> Int) -> IndexPath {
 		return IndexPath(item: self.item, section: transform(self.section))
 	}
 
 }
 
-extension IndexSet {
+public extension IndexSet {
 
-	public init<S: Sequence>(dsIntegers: S) where S.Iterator.Element == Int {
+    init<S: Sequence>(ds_integers: S) where S.Iterator.Element == Int {
 		var res = IndexSet()
-		for i in dsIntegers {
+		for i in ds_integers {
 			res.insert(i)
 		}
 		self.init(res)
 	}
-
+	
 }

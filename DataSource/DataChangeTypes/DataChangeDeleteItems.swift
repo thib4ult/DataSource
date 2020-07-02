@@ -8,24 +8,16 @@
 
 import Foundation
 
-public struct DataChangeDeleteItems: DataChange {
+public struct DataChangeDeleteItems<T: Hashable>: DataChange {
 
-	public let indexPaths: [IndexPath]
+	public let items: [T]
 
-	public init(_ indexPaths: [IndexPath]) {
-		self.indexPaths = indexPaths
-	}
-
-	public init (_ indexPath: IndexPath) {
-		self.init([indexPath])
+	public init(_ items: [T]) {
+		self.items = items
 	}
 
 	public func apply(to target: DataChangeTarget) {
-		target.ds_deleteItems(at: indexPaths)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeDeleteItems {
-		return DataChangeDeleteItems(indexPaths.map { $0.ds_mapSection(transform) })
+		target.ds_deleteItems(items)
 	}
 
 }

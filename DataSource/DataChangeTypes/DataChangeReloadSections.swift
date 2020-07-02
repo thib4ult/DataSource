@@ -10,18 +10,14 @@ import Foundation
 
 public struct DataChangeReloadSections: DataChange {
 
-	public let sections: [Int]
+	public let sections: [DataSourceSection]
 
-	public init(_ sections: [Int]) {
+	public init(_ sections: [DataSourceSection]) {
 		self.sections = sections
 	}
 
 	public func apply(to target: DataChangeTarget) {
 		target.ds_reloadSections(sections)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeReloadSections {
-		return DataChangeReloadSections(sections.map(transform))
 	}
 
 }

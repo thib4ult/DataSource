@@ -24,9 +24,34 @@ import UIKit
 /// are used as section footer titles.
 open class TableViewDataSourceWithHeaderFooterViews: TableViewDataSource, UITableViewDelegate {
 
+	public init(tableView: UITableView, using cellDescriptors: [CellDescriptor], headerFooterDescriptors: [HeaderFooterDescriptor] = [], animations: UITableView.RowAnimation) {
+		super.init(tableView: tableView)
+
+		configure(tableView, using: cellDescriptors, headerFooterDescriptors: headerFooterDescriptors)
+		tableViewDiffableDataSource = UITableViewDiffableDataSource(tableView: tableView, cellProvider: { [weak self] (tableview, indexPath, tableCell) -> UITableViewCell? in
+			guard let self = self else {
+				return nil
+			}
+			let item = self.dataSource.item(at: indexPath)
+			let reuseIdentifier = self.reuseIdentifierForItem(indexPath, item)
+			let cell = tableView.dequeueReusableCell(withIdentifier: reuseIdentifier, for: indexPath)
+			self.configureCell(cell, forRowAt: indexPath)
+			return cell
+		})
+		tableViewDiffableDataSource.defaultRowAnimation = animations
+
+		cancellable = dataSource.changes.sink { [weak self] change in
+			if let self = self, let dataChangeTarget = self.dataChangeTarget ?? self.tableView {
+				change.apply(to: dataChangeTarget)
+			}
+		}
+
+	}
+
 	public final var reuseIdentifierForHeaderItem: (Int, Any) -> String = {
 		_, _ in "DefaultHeaderView"
 	}
+
 	public final var reuseIdentifierForFooterItem: (Int, Any) -> String = {
 		_, _ in "DefaultFooterView"
 	}

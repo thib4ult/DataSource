@@ -10,18 +10,14 @@ import Foundation
 
 public struct DataChangeDeleteSections: DataChange {
 
-	public let sections: [Int]
+	public let sections: [DataSourceSection]
 
-	public init(_ sections: [Int]) {
+	public init(_ sections: [DataSourceSection]) {
 		self.sections = sections
 	}
 
 	public func apply(to target: DataChangeTarget) {
 		target.ds_deleteSections(sections)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeDeleteSections {
-		return DataChangeDeleteSections(sections.map(transform))
 	}
 
 }

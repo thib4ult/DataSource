@@ -10,18 +10,16 @@ import Foundation
 
 public struct DataChangeInsertSections: DataChange {
 
-	public let sections: [Int]
+	public let sections: [DataSourceSection]
+	public let beforeSection: DataSourceSection
 
-	public init(_ sections: [Int]) {
+	public init(_ sections: [DataSourceSection], at beforeSection: DataSourceSection) {
 		self.sections = sections
+		self.beforeSection = beforeSection
 	}
 
 	public func apply(to target: DataChangeTarget) {
-		target.ds_insertSections(sections)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeInsertSections {
-		return DataChangeInsertSections(sections.map(transform))
+		target.ds_insertSections(sections, at: beforeSection)
 	}
 
 }
