@@ -19,11 +19,9 @@ import Combine
 /// a corresponding dataChange.
 public final class MutableCompositeDataSource: DataSource {
 
-	public var changes: AnyPublisher<DataChange, Never> {
-		changesSubject.eraseToAnyPublisher()
-	}
+	public let changes: AnyPublisher<DataChange, Never>
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
-	private var cancellable: Cancellable?
+	private var cancellables = Set<AnyCancellable>()
 
 	private let _innerDataSources: CurrentValueSubject<[DataSource], Never>
 
@@ -31,18 +29,21 @@ public final class MutableCompositeDataSource: DataSource {
 		return _innerDataSources
 	}
 
-	public init(_ inner: [DataSource] = []) {
-		_innerDataSources = CurrentValueSubject(inner)
-		cancellable = _innerDataSources
-			.map { changesOfInnerDataSources($0) }
-			.switchToLatest()
-			.sink { [weak self] in
-				self?.changesSubject.send($0)
-		}
+	public var sections: [DataSourceSection] {
+		_innerDataSources.value.flatMap { $0.sections }
 	}
 
-	deinit {
-		cancellable?.cancel()
+	public init(_ inner: [DataSource] = []) {
+		changes = changesSubject.eraseToAnyPublisher()
+		_innerDataSources = CurrentValueSubject(inner)
+
+		inner.forEach { datasource in
+			datasource.changes.sink { [weak self] _ in
+				if let self = self {
+					self.changesSubject.send(DataChangeApply(sections: self.sections))
+				}
+			}.store(in: &cancellables)
+		}
 	}
 
 	public var numberOfSections: Int {
@@ -83,11 +84,7 @@ public final class MutableCompositeDataSource: DataSource {
 	/// and emits `DataChangeInsertSections` for their sections.
 	public func insert(_ dataSources: [DataSource], at index: Int) {
 		_innerDataSources.value.insert(contentsOf: dataSources, at: index)
-		let sections = dataSources.enumerated().flatMap { self.sections(of: $1, at: index + $0) }
-		if !sections.isEmpty {
-			let change = DataChangeInsertSections(sections)
-			changesSubject.send(change)
-		}
+		changesSubject.send(DataChangeApply(sections: sections))
 	}
 
 	/// Deletes an inner dataSource at a given index
@@ -99,49 +96,24 @@ public final class MutableCompositeDataSource: DataSource {
 	/// Deletes an inner dataSource in the given range
 	/// and emits `DataChangeDeleteSections` for its corresponding sections.
 	public func delete(in range: Range<Int>) {
-		let sections = range.flatMap(sectionsOfDataSource)
 		_innerDataSources.value.removeSubrange(range)
-		if !sections.isEmpty {
-			let change = DataChangeDeleteSections(sections)
-			changesSubject.send(change)
-		}
+		changesSubject.send(DataChangeApply(sections: sections))
 	}
 
 	/// Replaces an inner dataSource at a given index with another inner dataSource
 	/// and emits a batch of `DataChangeDeleteSections` and `DataChangeInsertSections`
 	/// for their sections.
 	public func replaceDataSource(at index: Int, with dataSource: DataSource) {
-		var batch: [DataChange] = []
-		let oldSections = sectionsOfDataSource(at: index)
-		if !oldSections.isEmpty {
-			batch.append(DataChangeDeleteSections(oldSections))
-		}
-		let newSections = sections(of: dataSource, at: index)
-		if !newSections.isEmpty {
-			batch.append(DataChangeInsertSections(newSections))
-		}
 		_innerDataSources.value[index] = dataSource
-		if !batch.isEmpty {
-			let change = DataChangeBatch(batch)
-			changesSubject.send(change)
-		}
+		changesSubject.send(DataChangeApply(sections: sections))
 	}
 
 	/// Moves an inner dataSource at a given index to another index
 	/// and emits a batch of `DataChangeMoveSection` for its sections.
 	public func moveData(at oldIndex: Int, to newIndex: Int) {
-		let oldLocation = mapOutside(_innerDataSources.value, oldIndex)(0)
 		let dataSource = _innerDataSources.value.remove(at: oldIndex)
 		_innerDataSources.value.insert(dataSource, at: newIndex)
-		let newLocation = mapOutside(_innerDataSources.value, newIndex)(0)
-		let numberOfSections = dataSource.numberOfSections
-		let batch: [DataChange] = (0 ..< numberOfSections).map {
-			DataChangeMoveSection(from: oldLocation + $0, to: newLocation + $0)
-		}
-		if !batch.isEmpty {
-			let change = DataChangeBatch(batch)
-			changesSubject.send(change)
-		}
+		changesSubject.send(DataChangeApply(sections: sections))
 	}
 
 	private func sections(of dataSource: DataSource, at index: Int) -> [Int] {
@@ -155,14 +127,4 @@ public final class MutableCompositeDataSource: DataSource {
 		return sections(of: dataSource, at: index)
 	}
 
-}
-
-private func changesOfInnerDataSources(_ innerDataSources: [DataSource]) -> AnyPublisher<DataChange, Never> {
-	let arrayOfPublishers = innerDataSources.enumerated().map { index, dataSource in
-		return dataSource.changes.map {
-			$0.mapSections(mapOutside(innerDataSources, index))
-		}.eraseToAnyPublisher()
-	}
-
-	return Publishers.MergeMany(arrayOfPublishers).eraseToAnyPublisher()
 }

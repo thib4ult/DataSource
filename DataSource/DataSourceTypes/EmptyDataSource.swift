@@ -17,6 +17,9 @@ public final class EmptyDataSource: DataSource {
 	public var changes: AnyPublisher<DataChange, Never> {
 		changesSubject.eraseToAnyPublisher()
 	}
+
+	public var sections: [DataSourceSection] = []
+
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
 	public init() { }

@@ -8,22 +8,18 @@
 
 import Foundation
 
-public struct DataChangeMoveItem: DataChange {
+public struct DataChangeMoveItem<T: Hashable>: DataChange {
 
-	public let fromIndexPath: IndexPath
-	public let toIndexPath: IndexPath
+	public let item: T
+	public let beforeItem: T
 
-	public init(from fromIndexPath: IndexPath, to toIndexPath: IndexPath) {
-		self.fromIndexPath = fromIndexPath
-		self.toIndexPath = toIndexPath
+	public init(_ item: T, atItem: T) {
+		self.item = item
+		self.beforeItem = atItem
 	}
 
 	public func apply(to target: DataChangeTarget) {
-		target.ds_moveItem(at: fromIndexPath, to: toIndexPath)
-	}
-
-	public func mapSections(_ transform: (Int) -> Int) -> DataChangeMoveItem {
-		return DataChangeMoveItem(from: fromIndexPath.ds_mapSection(transform), to: toIndexPath.ds_mapSection(transform))
+		target.ds_moveItem(item, at: beforeItem)
 	}
 
 }

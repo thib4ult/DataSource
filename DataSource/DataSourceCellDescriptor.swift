@@ -1,11 +1,3 @@
-//
-//  DataSourceCellDescriptor.swift
-//  DataSource
-//
-//  Created by Aleksei Bobrov on 05/02/2019.
-//  Copyright © 2019 Fueled. All rights reserved.
-//
-
 import UIKit
 
 public class CellDescriptor: NSObject {
@@ -35,12 +27,12 @@ public class CellDescriptor: NSObject {
 public class HeaderFooterDescriptor: NSObject {
 	public let reuseIdentifier: String
 	public let prototypeSource: PrototypeSource
-	public let isMatching: (IndexPath, Any) -> Bool
+	public let isMatching: (Int, Any) -> Bool
 
 	public init(
 		_ reuseIdentifier: String,
 		_ prototypeSource: PrototypeSource,
-		isMatching: @escaping (IndexPath, Any) -> Bool)
+		isMatching: @escaping (Int, Any) -> Bool)
 	{
 		self.reuseIdentifier = reuseIdentifier
 		self.prototypeSource = prototypeSource
@@ -60,15 +52,26 @@ public enum PrototypeSource {
 	case storyboard
 	case nib(UINib)
 	case `class`(AnyObject.Type)
+	case headerNib(UINib)
+	case `headerClass`(AnyObject.Type)
+	case footerNib(UINib)
+	case `footerClass`(AnyObject.Type)
 }
 
 extension CollectionViewDataSource {
-	@objc open func configure(_ collectionView: UICollectionView, using cellDescriptors: [CellDescriptor]) {
+	@objc open func configure(_ collectionView: UICollectionView, using cellDescriptors: [CellDescriptor], headerFooterDescriptors: [HeaderFooterDescriptor] = []) {
 		self.reuseIdentifierForItem = { indexPath, item in
-			guard let reuseIdentifier = cellDescriptors.first(where: { $0.isMatching(indexPath, item) })?.reuseIdentifier else {
-				fatalError("Unable to determine reuse identifier")
+			for descriptor in cellDescriptors where descriptor.isMatching(indexPath, item) {
+				return descriptor.reuseIdentifier
 			}
-			return reuseIdentifier
+			fatalError("Unable to determine reuse identifier")
+		}
+		self.reuseIdentifierForSupplementaryItem = { _, section, item in
+			for descriptor in headerFooterDescriptors where descriptor.isMatching(section, item) {
+				return descriptor.reuseIdentifier
+			}
+
+			fatalError("Unable to determine reuse supplementary identifier")
 		}
 		for descriptor in cellDescriptors {
 			switch descriptor.prototypeSource {
@@ -78,21 +81,36 @@ extension CollectionViewDataSource {
 				collectionView.register(nib, forCellWithReuseIdentifier: descriptor.reuseIdentifier)
 			case .class(let type):
 				collectionView.register(type, forCellWithReuseIdentifier: descriptor.reuseIdentifier)
+			default:
+				break
 			}
 		}
-		collectionView.dataSource = self
+
+		for descriptor in headerFooterDescriptors {
+			switch descriptor.prototypeSource {
+			case .headerNib(let nib):
+				collectionView.register(nib, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: descriptor.reuseIdentifier)
+			case .headerClass(let type):
+				collectionView.register(type, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: descriptor.reuseIdentifier)
+			case .footerNib(let nib):
+				collectionView.register(nib, forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter, withReuseIdentifier: descriptor.reuseIdentifier)
+			case .footerClass(let type):
+				collectionView.register(type, forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter, withReuseIdentifier: descriptor.reuseIdentifier)
+			default:
+				break
+			}
+		}
 		self.collectionView = collectionView
-		collectionView.performBatchUpdates(nil)
 	}
 }
 
 extension TableViewDataSource {
 	@objc open func configure(_ tableView: UITableView, using cellDescriptors: [CellDescriptor]) {
 		self.reuseIdentifierForItem = { indexPath, item in
-			guard let reuseIdentifier = cellDescriptors.first(where: { $0.isMatching(indexPath, item) })?.reuseIdentifier else {
-				fatalError("Unable to determine reuse identifier")
+			for descriptor in cellDescriptors where descriptor.isMatching(indexPath, item) {
+				return descriptor.reuseIdentifier
 			}
-			return reuseIdentifier
+			fatalError()
 		}
 		for descriptor in cellDescriptors {
 			switch descriptor.prototypeSource {
@@ -102,61 +120,48 @@ extension TableViewDataSource {
 				tableView.register(nib, forCellReuseIdentifier: descriptor.reuseIdentifier)
 			case .class(let type):
 				tableView.register(type, forCellReuseIdentifier: descriptor.reuseIdentifier)
+			default:
+				break
 			}
 		}
-		tableView.dataSource = self
-		self.tableView = tableView
 	}
 }
 
 extension TableViewDataSourceWithHeaderFooterViews {
-	@objc open func configure(_ tableView: UITableView, using cellDescriptors: [CellDescriptor], headerDescriptor: HeaderFooterDescriptor?, footerDescriptor: HeaderFooterDescriptor?) {
-		self.reuseIdentifierForItem = { indexPath, item in
-			guard let reuseIdentifier = cellDescriptors.first(where: { $0.isMatching(indexPath, item) })?.reuseIdentifier else {
-				fatalError("Unable to determine reuse identifier")
+	@objc open func configure(_ tableView: UITableView, using cellDescriptors: [CellDescriptor], headerFooterDescriptors: [HeaderFooterDescriptor]) {
+		reuseIdentifierForHeaderItem = { section, item in
+			for descriptor in headerFooterDescriptors where descriptor.isMatching(section, item) {
+				return descriptor.reuseIdentifier
 			}
-			return reuseIdentifier
+			fatalError()
 		}
-		for descriptor in cellDescriptors {
+		reuseIdentifierForFooterItem = { section, item in
+			for descriptor in headerFooterDescriptors {
+				if descriptor.isMatching(section, item) {
+					return descriptor.reuseIdentifier
+				}
+			}
+			fatalError()
+		}
+
+		for descriptor in headerFooterDescriptors {
 			switch descriptor.prototypeSource {
-			case .storyboard:
+			case .headerNib(let nib):
+				tableView.register(nib, forHeaderFooterViewReuseIdentifier: descriptor.reuseIdentifier)
+			case .headerClass(let type):
+				tableView.register(type, forHeaderFooterViewReuseIdentifier: descriptor.reuseIdentifier)
+			case .footerNib(let nib):
+				tableView.register(nib, forHeaderFooterViewReuseIdentifier: descriptor.reuseIdentifier)
+			case .footerClass(let type):
+				tableView.register(type, forHeaderFooterViewReuseIdentifier: descriptor.reuseIdentifier)
+			default:
 				break
-			case .nib(let nib):
-				tableView.register(nib, forCellReuseIdentifier: descriptor.reuseIdentifier)
-			case .class(let type):
-				tableView.register(type, forCellReuseIdentifier: descriptor.reuseIdentifier)
-			}
-		}
-		if let headerDescriptor = headerDescriptor {
-			self.reuseIdentifierForHeaderItem = { index, item in
-				return headerDescriptor.reuseIdentifier
-			}
-			switch headerDescriptor.prototypeSource {
-			case .storyboard:
-				break
-			case .nib(let nib):
-				tableView.register(nib, forHeaderFooterViewReuseIdentifier: headerDescriptor.reuseIdentifier)
-			case .class(let type):
-				tableView.register(type, forHeaderFooterViewReuseIdentifier: headerDescriptor.reuseIdentifier)
-			}
-		}
-		if let footerDescriptor = footerDescriptor {
-			self.reuseIdentifierForFooterItem = { index, item in
-				return footerDescriptor.reuseIdentifier
-			}
-			switch footerDescriptor.prototypeSource {
-			case .storyboard:
-				break
-			case .nib(let nib):
-				tableView.register(nib, forHeaderFooterViewReuseIdentifier: footerDescriptor.reuseIdentifier)
-			case .class(let type):
-				tableView.register(type, forHeaderFooterViewReuseIdentifier: footerDescriptor.reuseIdentifier)
 			}
 		}
 
-		tableView.dataSource = self
-		self.tableView = tableView
+		configure(tableView, using: cellDescriptors)
 	}
+
 }
 
 public protocol ReusableItem: AnyObject {

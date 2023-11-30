@@ -20,15 +20,17 @@ import Combine
 /// and emits them as its own changes.
 public final class ProxyDataSource: DataSource {
 
-	public var changes: AnyPublisher<DataChange, Never> {
-		changesSubject.eraseToAnyPublisher()
-	}
+	public let changes: AnyPublisher<DataChange, Never>
 	private let changesSubject = PassthroughSubject<DataChange, Never>()
 
 	public var innerDataSource: CurrentValueSubject<DataSource, Never>
 
 	private var lastCancellable: Cancellable?
 	private var cancellable: Cancellable?
+
+	public var sections: [DataSourceSection] {
+		return innerDataSource.value.sections
+	}
 
 	/// When `true`, switching innerDataSource produces
 	/// a dataChange consisting of deletions of all the
@@ -39,20 +41,16 @@ public final class ProxyDataSource: DataSource {
 	public let animatesChanges: CurrentValueSubject<Bool, Never>
 
 	public init(_ inner: DataSource = EmptyDataSource(), animateChanges: Bool = true) {
+		self.changes = changesSubject.eraseToAnyPublisher()
 		self.innerDataSource = CurrentValueSubject(inner)
 		self.animatesChanges = CurrentValueSubject(animateChanges)
 		lastCancellable = inner.changes.sink { [weak self] in self?.changesSubject.send($0) }
 
-		let combinePrevious = self.innerDataSource
-			.scan((inner, inner)) { ($0.1, $1) }
-			.dropFirst()
-			.eraseToAnyPublisher()
-
-		cancellable = combinePrevious.sink { [weak self] old, new in
+		cancellable = self.innerDataSource.sink { [weak self] datasource in
 				if let self = self {
 					self.lastCancellable?.cancel()
-					self.changesSubject.send(changeDataSources(old, new, self.animatesChanges.value))
-					self.lastCancellable = new.changes.sink { [weak self] in self?.changesSubject.send($0) }
+					self.changesSubject.send(DataChangeApply(sections: datasource.sections))
+					self.lastCancellable = datasource.changes.sink { [weak self] in self?.changesSubject.send($0) }
 				}
 			}
 	}
@@ -89,18 +87,3 @@ public final class ProxyDataSource: DataSource {
 
 }
 
-private func changeDataSources(_ old: DataSource, _ new: DataSource, _ animateChanges: Bool) -> DataChange {
-	if !animateChanges {
-		return DataChangeReloadData()
-	}
-	var batch: [DataChange] = []
-	let oldSections = old.numberOfSections
-	if oldSections > 0 {
-		batch.append(DataChangeDeleteSections(Array(0 ..< oldSections)))
-	}
-	let newSections = new.numberOfSections
-	if newSections > 0 {
-		batch.append(DataChangeInsertSections(Array(0 ..< newSections)))
-	}
-	return DataChangeBatch(batch)
-}
